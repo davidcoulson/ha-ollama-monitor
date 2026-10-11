@@ -38,7 +38,8 @@ by hand from the device page.
 | Entity | Type | Notes |
 | --- | --- | --- |
 | Reachable | binary sensor (connectivity, diagnostic) | Stays available while the server is down, so it can drive automations |
-| Active | binary sensor (running) | On when any model handled a request within the *activity window* |
+| Active | binary sensor (running) | On when any model handled a request within the *activity window*. Attributes: `active_models` (most recently used first), `last_active_model` and its `last_activity` time |
+| Active model | sensor | The model that most recently served a request, while it is still within the activity window; unknown when idle. The `active_models` attribute lists every active model when more than one is busy |
 | CPU offload | binary sensor | On when any loaded model does not fit completely in VRAM (slow inference) |
 | Loaded models | sensor | Count; the `models` attribute lists their names |
 | Installed models | sensor | Count |
@@ -168,6 +169,9 @@ To change the URL later use **Reconfigure** on the integration entry.
         message: "Loaded {{ trigger.to_state.attributes.model }}"
   ```
 
+- Show which model is answering right now: an entity card with
+  `sensor.ollama_10_2_6_50_active_model`, or a template such as
+  `{{ state_attr('binary_sensor.ollama_10_2_6_50_active', 'last_active_model') }}`.
 - Free the GPU for something else, e.g. before a game or a transcode job:
   `action: ollama_monitor.unload_model` with the server and model, or press the model's
   **Unload** button.

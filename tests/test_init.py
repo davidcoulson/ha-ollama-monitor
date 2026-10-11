@@ -603,3 +603,65 @@ async def test_outage_changes_are_not_activity(
     _bump(fake_ollama, "qwen3:30b", "2026-10-11T02:45:00Z")
     await _poll(hass, frozen_time)
     assert hass.states.get("binary_sensor.qwen3_30b_active").state == STATE_ON
+
+
+async def test_active_model_reporting(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    fake_ollama: FakeOllama,
+    frozen_time: FrozenDateTimeFactory,
+) -> None:
+    """The server reports which models are serving requests, newest first."""
+    active = "binary_sensor.ollama_10_2_6_50_active"
+    active_model = "sensor.ollama_10_2_6_50_active_model"
+    state = hass.states.get(active)
+    assert state.attributes["active_models"] == []
+    assert state.attributes["last_active_model"] is None
+    assert state.attributes["last_activity"] is None
+    assert hass.states.get(active_model).state == "unknown"
+    assert hass.states.get(active_model).attributes["active_models"] == []
+
+    # Loaded but idle is not active.
+    await _poll(hass, frozen_time)
+    assert hass.states.get(active_model).state == "unknown"
+
+    _bump(fake_ollama, "qwen3:30b", "2026-10-11T02:20:00Z")
+    await _poll(hass, frozen_time)
+    first_use = dt_util.utcnow()
+    state = hass.states.get(active)
+    assert state.state == STATE_ON
+    assert state.attributes["active_models"] == ["qwen3:30b"]
+    assert state.attributes["last_active_model"] == "qwen3:30b"
+    assert state.attributes["last_activity"] == first_use
+    assert hass.states.get(active_model).state == "qwen3:30b"
+
+    # A second model starts serving: the newest one leads.
+    fake_ollama.loaded.append(deepcopy(QWEN3_8B_PS))
+    await _poll(hass, frozen_time)
+    second_use = dt_util.utcnow()
+    state = hass.states.get(active)
+    assert state.attributes["active_models"] == ["qwen3:8b", "qwen3:30b"]
+    assert state.attributes["last_active_model"] == "qwen3:8b"
+    assert state.attributes["last_activity"] == second_use
+    model_state = hass.states.get(active_model)
+    assert model_state.state == "qwen3:8b"
+    assert model_state.attributes["active_models"] == ["qwen3:8b", "qwen3:30b"]
+
+    # Both used in the same poll: ordered by name.
+    _bump(fake_ollama, "qwen3:30b", "2026-10-11T02:21:00Z")
+    _bump(fake_ollama, "qwen3:8b", "2026-10-11T02:21:00Z")
+    await _poll(hass, frozen_time)
+    assert hass.states.get(active).attributes["active_models"] == [
+        "qwen3:30b",
+        "qwen3:8b",
+    ]
+    assert hass.states.get(active_model).state == "qwen3:30b"
+
+    # The activity window passes: nothing is active, the last model is remembered.
+    for _ in range(6):
+        await _poll(hass, frozen_time)
+    state = hass.states.get(active)
+    assert state.state == STATE_OFF
+    assert state.attributes["active_models"] == []
+    assert state.attributes["last_active_model"] == "qwen3:30b"
+    assert hass.states.get(active_model).state == "unknown"

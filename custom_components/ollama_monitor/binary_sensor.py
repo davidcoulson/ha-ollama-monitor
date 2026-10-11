@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
@@ -14,6 +15,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from .const import ATTR_ACTIVE_MODELS, ATTR_LAST_ACTIVE_MODEL, ATTR_LAST_ACTIVITY
 from .coordinator import ModelState, OllamaConfigEntry, OllamaCoordinator, OllamaData
 from .entity import OllamaEntity, OllamaModelEntity, async_add_model_entities
 
@@ -25,6 +27,7 @@ class OllamaBinarySensorEntityDescription(BinarySensorEntityDescription):
     """Describes a binary sensor of the server device."""
 
     value_fn: Callable[[OllamaData], bool]
+    attributes_fn: Callable[[OllamaData], Mapping[str, Any]] | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -32,6 +35,16 @@ class OllamaModelBinarySensorEntityDescription(BinarySensorEntityDescription):
     """Describes a binary sensor of a model device."""
 
     value_fn: Callable[[ModelState], bool]
+
+
+def _activity_attributes(data: OllamaData) -> dict[str, Any]:
+    """Return which models are active and which one was used last."""
+    last = data.last_active_model
+    return {
+        ATTR_ACTIVE_MODELS: data.active_models,
+        ATTR_LAST_ACTIVE_MODEL: last.name if last else None,
+        ATTR_LAST_ACTIVITY: last.last_used if last else None,
+    }
 
 
 REACHABLE = BinarySensorEntityDescription(
@@ -47,6 +60,7 @@ SERVER_BINARY_SENSORS: tuple[OllamaBinarySensorEntityDescription, ...] = (
         translation_key="active",
         device_class=BinarySensorDeviceClass.RUNNING,
         value_fn=lambda data: data.active,
+        attributes_fn=_activity_attributes,
     ),
     OllamaBinarySensorEntityDescription(
         key="cpu_offload",
@@ -124,6 +138,13 @@ class OllamaBinarySensor(OllamaEntity, BinarySensorEntity):
     def is_on(self) -> bool:
         """Return the state."""
         return self.entity_description.value_fn(self.coordinator.data)
+
+    @property
+    def extra_state_attributes(self) -> Mapping[str, Any] | None:
+        """Return extra attributes."""
+        if self.entity_description.attributes_fn is None:
+            return None
+        return self.entity_description.attributes_fn(self.coordinator.data)
 
 
 class OllamaModelBinarySensor(OllamaModelEntity, BinarySensorEntity):

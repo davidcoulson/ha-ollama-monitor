@@ -1,44 +1,95 @@
 {
   "entity": {
     "binary_sensor": {
-      "active": { "default": "mdi:brain" },
+      "active": {
+        "default": "mdi:brain"
+      },
       "cpu_offload": {
         "default": "mdi:expansion-card",
-        "state": { "on": "mdi:cpu-64-bit" }
+        "state": {
+          "on": "mdi:cpu-64-bit"
+        }
       },
       "loaded": {
         "default": "mdi:memory",
-        "state": { "off": "mdi:tray-arrow-up" }
+        "state": {
+          "off": "mdi:tray-arrow-up"
+        }
       },
-      "model_active": { "default": "mdi:brain" }
+      "model_active": {
+        "default": "mdi:brain"
+      }
     },
     "button": {
-      "unload": { "default": "mdi:eject" }
+      "unload": {
+        "default": "mdi:eject"
+      }
     },
     "event": {
-      "model_event": { "default": "mdi:swap-horizontal" }
+      "model_event": {
+        "default": "mdi:swap-horizontal"
+      }
     },
     "sensor": {
-      "loaded_models": { "default": "mdi:memory" },
-      "installed_models": { "default": "mdi:package-variant-closed" },
-      "vram_used": { "default": "mdi:expansion-card" },
-      "memory_used": { "default": "mdi:memory" },
-      "gpu_share": { "default": "mdi:expansion-card-variant" },
-      "disk_usage": { "default": "mdi:harddisk" },
-      "last_activity": { "default": "mdi:clock-outline" },
-      "version": { "default": "mdi:tag" },
-      "model_memory": { "default": "mdi:memory" },
-      "model_vram": { "default": "mdi:expansion-card" },
-      "model_gpu_share": { "default": "mdi:expansion-card-variant" },
-      "context_length": { "default": "mdi:text-long" },
-      "unloads_at": { "default": "mdi:timer-sand" },
-      "last_used": { "default": "mdi:clock-outline" },
-      "size_on_disk": { "default": "mdi:harddisk" }
+      "loaded_models": {
+        "default": "mdi:memory"
+      },
+      "installed_models": {
+        "default": "mdi:package-variant-closed"
+      },
+      "vram_used": {
+        "default": "mdi:expansion-card"
+      },
+      "memory_used": {
+        "default": "mdi:memory"
+      },
+      "gpu_share": {
+        "default": "mdi:expansion-card-variant"
+      },
+      "disk_usage": {
+        "default": "mdi:harddisk"
+      },
+      "last_activity": {
+        "default": "mdi:clock-outline"
+      },
+      "version": {
+        "default": "mdi:tag"
+      },
+      "model_memory": {
+        "default": "mdi:memory"
+      },
+      "model_vram": {
+        "default": "mdi:expansion-card"
+      },
+      "model_gpu_share": {
+        "default": "mdi:expansion-card-variant"
+      },
+      "context_length": {
+        "default": "mdi:text-long"
+      },
+      "unloads_at": {
+        "default": "mdi:timer-sand"
+      },
+      "last_used": {
+        "default": "mdi:clock-outline"
+      },
+      "size_on_disk": {
+        "default": "mdi:harddisk"
+      },
+      "active_model": {
+        "default": "mdi:brain"
+      }
     }
   },
   "services": {
-    "unload_model": { "service": "mdi:eject" },
-    "pull_model": { "service": "mdi:download" },
-    "delete_model": { "service": "mdi:delete" }
+    "unload_model": {
+      "service": "mdi:eject"
+    },
+    "pull_model": {
+      "service": "mdi:download"
+    },
+    "delete_model": {
+      "service": "mdi:delete"
+    }
   }
 }

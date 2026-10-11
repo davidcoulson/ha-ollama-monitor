@@ -36,6 +36,9 @@ ISSUE_UNREACHABLE: Final = "server_unreachable"
 
 ATTR_MODEL: Final = "model"
 ATTR_MODELS: Final = "models"
+ATTR_ACTIVE_MODELS: Final = "active_models"
+ATTR_LAST_ACTIVE_MODEL: Final = "last_active_model"
+ATTR_LAST_ACTIVITY: Final = "last_activity"
 ATTR_CONFIG_ENTRY_ID: Final = "config_entry_id"
 
 SERVICE_UNLOAD_MODEL: Final = "unload_model"

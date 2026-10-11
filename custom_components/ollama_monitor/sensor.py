@@ -17,7 +17,7 @@ from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfInformation
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import ATTR_MODELS
+from .const import ATTR_ACTIVE_MODELS, ATTR_MODELS
 from .coordinator import ModelState, OllamaConfigEntry, OllamaCoordinator, OllamaData
 from .entity import OllamaEntity, OllamaModelEntity, async_add_model_entities
 
@@ -62,6 +62,12 @@ SERVER_SENSORS: tuple[OllamaSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda data: len(data.loaded_names),
         attributes_fn=lambda data: {ATTR_MODELS: data.loaded_names},
+    ),
+    OllamaSensorEntityDescription(
+        key="active_model",
+        translation_key="active_model",
+        value_fn=lambda data: next(iter(data.active_models), None),
+        attributes_fn=lambda data: {ATTR_ACTIVE_MODELS: data.active_models},
     ),
     OllamaSensorEntityDescription(
         key="installed_models",

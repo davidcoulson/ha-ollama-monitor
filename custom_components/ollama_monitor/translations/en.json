@@ -60,7 +60,18 @@
         "name": "Reachable"
       },
       "active": {
-        "name": "Active"
+        "name": "Active",
+        "state_attributes": {
+          "active_models": {
+            "name": "Active models"
+          },
+          "last_active_model": {
+            "name": "Last active model"
+          },
+          "last_activity": {
+            "name": "Last activity"
+          }
+        }
       },
       "cpu_offload": {
         "name": "CPU offload"
@@ -101,6 +112,14 @@
         "state_attributes": {
           "models": {
             "name": "Models"
+          }
+        }
+      },
+      "active_model": {
+        "name": "Active model",
+        "state_attributes": {
+          "active_models": {
+            "name": "Active models"
           }
         }
       },

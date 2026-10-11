@@ -158,6 +158,30 @@ class OllamaData:
         """Return True if any model is active."""
         return any(state.active for state in self.models.values())
 
+    @property
+    def active_models(self) -> list[str]:
+        """Return the active models, most recently used first."""
+        return [state.name for state in self._by_recent_use() if state.active]
+
+    @property
+    def last_active_model(self) -> ModelState | None:
+        """Return the most recently used model, active or not."""
+        return next(iter(self._by_recent_use()), None)
+
+    def _by_recent_use(self) -> list[ModelState]:
+        """Return the models with a known last use, newest first (ties by name)."""
+        used = sorted(
+            (
+                (state.last_used, state)
+                for state in self.models.values()
+                if state.last_used is not None
+            ),
+            key=lambda pair: pair[1].name,
+        )
+        # Stable sort: models used at the same moment stay in name order.
+        used.sort(key=lambda pair: pair[0], reverse=True)
+        return [state for _, state in used]
+
 
 class OllamaCoordinator(DataUpdateCoordinator[OllamaData]):
     """Poll the Ollama server and derive activity from the changes."""
