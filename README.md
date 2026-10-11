@@ -223,6 +223,11 @@ pytest
 ruff check . && ruff format --check . && mypy
 ```
 
+The integration's icon and logo (shown by Home Assistant from
+`custom_components/ollama_monitor/brand/`) are original artwork. The SVG sources are in
+`assets/brand/`; `python3 assets/brand/render.py` regenerates the PNGs (needs Google
+Chrome and ImageMagick).
+
 ## License
 
 MIT

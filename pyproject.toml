@@ -1,6 +1,6 @@
 [project]
 name = "ha-ollama-monitor"
-version = "0.2.0"
+version = "0.2.1"
 description = "Home Assistant custom integration that monitors an Ollama server"
 readme = "README.md"
 license = { text = "MIT" }
@@ -39,6 +39,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D", "S101", "SLF001", "PLR0915", "PLR0917"]
+# Developer tool that runs fixed local programs (Chrome, ImageMagick).
+"assets/brand/render.py" = ["S603", "S607"]
 
 [tool.ruff.lint.isort]
 force-sort-within-sections = true
