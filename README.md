@@ -250,10 +250,16 @@ pytest
 ruff check . && ruff format --check . && mypy
 ```
 
-The integration's icon and logo (shown by Home Assistant from
-`custom_components/ollama_monitor/brand/`) are original artwork. The SVG sources are in
-`assets/brand/`; `python3 assets/brand/render.py` regenerates the PNGs (needs Google
-Chrome and ImageMagick).
+### Icon and logo
+
+The icon is Ollama's llama with a gauge badge in the corner. The llama is a trademark
+of Ollama; it is used here only to identify the product this integration monitors,
+taken unmodified from the images published for Home Assistant's core `ollama`
+integration. The gauge badge (original artwork) marks this as an unofficial
+monitoring integration that is not made or endorsed by Ollama and is distinct from the
+core `ollama` integration. Sources are in `assets/brand/`; `python3
+assets/brand/render.py` regenerates `custom_components/ollama_monitor/brand/` (needs
+Google Chrome and ImageMagick).
 
 ## License
 

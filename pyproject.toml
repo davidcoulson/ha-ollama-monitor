@@ -1,6 +1,6 @@
 [project]
 name = "ha-ollama-monitor"
-version = "0.3.0"
+version = "0.3.1"
 description = "Home Assistant custom integration that monitors an Ollama server"
 readme = "README.md"
 license = { text = "MIT" }

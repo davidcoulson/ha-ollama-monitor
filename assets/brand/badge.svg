@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <!-- Ollama Monitor gauge badge (original artwork): marks the icon as the monitor. -->
+  <defs>
+    <linearGradient id="level" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#22C55E"/>
+      <stop offset="0.6" stop-color="#A3E635"/>
+      <stop offset="1" stop-color="#F59E0B"/>
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="93" fill="#0F172A" stroke="#FFFFFF" stroke-width="14"/>
+  <path d="M 56.16 143.84 A 62 62 0 1 1 143.84 143.84" fill="none" stroke="#475569" stroke-width="18" stroke-linecap="round"/>
+  <path d="M 56.16 143.84 A 62 62 0 1 1 153.69 69" fill="none" stroke="url(#level)" stroke-width="18" stroke-linecap="round"/>
+  <line x1="100" y1="100" x2="138.1" y2="78" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="100" cy="100" r="11" fill="#FFFFFF"/>
+</svg>
