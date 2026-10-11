@@ -1,5 +1,18 @@
 # Ollama Monitor for Home Assistant
 
+> **TL;DR:** See what your local AI server is doing, right in Home Assistant.
+>
+> - **What's running:** which AI models are loaded right now, and when each was last used.
+> - **Is it fast:** how much graphics-card memory they use, and a warning you can automate on
+>   when a model doesn't fit and slows down by running partly on the CPU.
+> - **What's installed:** every model gets its own device, plus disk usage and events when
+>   models are loaded, unloaded, installed or removed.
+> - **Light housekeeping:** unload a model with one action. Downloading and deleting models
+>   is available but off until you allow it.
+>
+> It only watches. It doesn't replace Home Assistant's built-in Ollama chat integration and
+> works alongside it. Set it up in the UI by entering your Ollama server's address.
+
 A Home Assistant custom integration that **watches** an [Ollama](https://ollama.com) server:
 which models are loaded, how much VRAM they use, whether they spill over to the CPU,
 when they were last used and when they will be unloaded.
