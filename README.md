@@ -113,6 +113,14 @@ on the first start after the update: device and entity IDs, names, areas, labels
 disabled entities and history are kept. Models added afterwards get entity IDs that
 start with the server name (for example `sensor.ollama_10_2_6_50_qwen3_8b_vram`).
 
+**Going back to 0.2 is not supported by simply reinstalling it.** Once 0.3 has converted
+the model devices, 0.2 cannot register its model entities on them (Home Assistant
+refuses to treat a sub-device as a regular device). Before updating, let HACS create a
+backup (or take one yourself). To roll back, restore that backup. Without a backup,
+delete the Ollama Monitor entry under **Settings → Devices & services**, install 0.2,
+restart and add the server again; all devices and entities are recreated, but entity
+customisations and the stored *Last used* history are lost.
+
 ## Installation
 
 ### HACS (custom repository)
