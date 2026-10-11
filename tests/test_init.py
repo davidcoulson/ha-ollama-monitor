@@ -149,7 +149,9 @@ async def test_load_unload_events(
     assert fired == [("model_unloaded", "qwen3:30b"), ("model_loaded", "qwen3:8b")]
     assert hass.states.get("binary_sensor.qwen3_8b_loaded").state == STATE_ON
     assert hass.states.get("binary_sensor.qwen3_30b_loaded").state == STATE_OFF
-    assert hass.states.get("binary_sensor.qwen3_8b_active").state == STATE_ON
+    # Loading alone is not use.
+    assert hass.states.get("binary_sensor.qwen3_8b_active").state == STATE_OFF
+    assert hass.states.get("sensor.qwen3_8b_last_used").state == "unknown"
     assert hass.states.get("sensor.qwen3_30b_vram").state == "0.0"
     assert hass.states.get("sensor.qwen3_30b_gpu_share").state == "unknown"
     assert hass.states.get("sensor.qwen3_8b_gpu_share").state == "100.0"
@@ -635,8 +637,17 @@ async def test_active_model_reporting(
     assert state.attributes["last_activity"] == first_use
     assert hass.states.get(active_model).state == "qwen3:30b"
 
-    # A second model starts serving: the newest one leads.
+    # Loading a second model (e.g. a preload) does not displace the active one.
     fake_ollama.loaded.append(deepcopy(QWEN3_8B_PS))
+    await _poll(hass, frozen_time)
+    state = hass.states.get(active)
+    assert state.attributes["active_models"] == ["qwen3:30b"]
+    assert state.attributes["last_active_model"] == "qwen3:30b"
+    assert state.attributes["last_activity"] == first_use
+    assert hass.states.get(active_model).state == "qwen3:30b"
+
+    # Once it serves a request, the newest one leads.
+    _bump(fake_ollama, "qwen3:8b", "2026-10-11T02:20:30Z")
     await _poll(hass, frozen_time)
     second_use = dt_util.utcnow()
     state = hass.states.get(active)

@@ -310,9 +310,11 @@ class OllamaCoordinator(DataUpdateCoordinator[OllamaData]):
             )
             for name, model in loaded_by_name.items():
                 if name not in self._expires:
+                    # A load alone is not use: a preload (empty prompt) looks the
+                    # same. A request still running keeps moving expires_at (Ollama
+                    # reports now + keep_alive until the first request finishes),
+                    # so it is picked up by the next poll.
                     events.append(ModelEvent(EVENT_MODEL_LOADED, name))
-                    if not self._recovering:
-                        self._mark_used(name, now)
                 elif self._expires[name] != model.expires_at and not self._recovering:
                     self._mark_used(name, now)
 

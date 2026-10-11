@@ -81,14 +81,19 @@ integration's options (off by default).
 ### How activity is detected
 
 Every request to a loaded model resets its `expires_at` to *now + keep_alive*. When a
-poll sees a new `expires_at` (or a model that was not loaded before), the model counts
-as used at that moment. Consequences:
+poll sees a new `expires_at` for a model that was already loaded, the model counts as
+used at that moment. Loading alone does not count, because a preload (a request with an
+empty prompt) looks the same; while a model's first request is still running Ollama
+reports a moving `expires_at`, so that request is picked up on the next poll.
+Consequences:
 
 - Precision is one poll interval (10 s by default).
 - Ollama only resets `expires_at` when a request **finishes**, so a long generation
   shows up when it completes.
 - Requests to models that are not kept loaded (`keep_alive: 0`) are only seen if a
   poll happens while they are loaded.
+- A request that loads a model and finishes between two polls is not counted (it is
+  indistinguishable from a preload); the next request to that model is.
 
 ### Repairs and diagnostics
 
