@@ -14,12 +14,14 @@ from pytest_homeassistant_custom_component.common import (
 )
 
 from custom_components.ollama_monitor import async_remove_config_entry_device
+from custom_components.ollama_monitor.api import ModelDetails
 from custom_components.ollama_monitor.const import DOMAIN, ISSUE_UNREACHABLE
 from custom_components.ollama_monitor.coordinator import ModelState
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant
 from homeassistant.helpers import (
+    area_registry as ar,
     device_registry as dr,
     entity_registry as er,
     issue_registry as ir,
@@ -79,13 +81,21 @@ async def test_setup_and_unload(
     assert server is not None
     assert server.sw_version == "0.40.2"
     assert server.manufacturer == "Ollama"
-    model = registry.async_get_device_by_identifier(
+    model = registry.async_get_child_device_by_identifier(
         (DOMAIN, "01TESTENTRY_model_qwen3:30b"), "01TESTENTRY"
     )
     assert model is not None
-    assert model.via_device_id == server.id
-    assert model.model == "qwen3moe · 30.5B · Q4_K_M"
-    assert model.sw_version == "ad815644918f"
+    assert model.parent_device_id == server.id
+    assert model.name == "qwen3:30b"
+    # Model details live in diagnostic sensors on the model device.
+    prefix = "sensor.ollama_10_2_6_50_qwen3_30b"
+    assert hass.states.get(f"{prefix}_family").state == "qwen3moe"
+    assert hass.states.get(f"{prefix}_parameter_size").state == "30.5B"
+    assert hass.states.get(f"{prefix}_quantization").state == "Q4_K_M"
+    entity = er.async_get(hass).async_get(f"{prefix}_quantization")
+    assert entity is not None
+    assert entity.entity_category is er.EntityCategory.DIAGNOSTIC
+    assert entity.device_id == model.id
 
     assert await hass.config_entries.async_unload(init_integration.entry_id)
     assert init_integration.state is ConfigEntryState.NOT_LOADED
@@ -108,8 +118,14 @@ async def test_activity_detection(
     frozen_time: FrozenDateTimeFactory,
 ) -> None:
     """A changed expires_at marks the model as used."""
-    assert hass.states.get("sensor.qwen3_30b_last_used").state == "unknown"
-    assert hass.states.get("binary_sensor.qwen3_30b_active").state == STATE_OFF
+    assert (
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_30b_last_used").state
+        == "unknown"
+    )
+    assert (
+        hass.states.get("binary_sensor.ollama_10_2_6_50_qwen3_30b_active").state
+        == STATE_OFF
+    )
 
     # No change: no activity.
     await _poll(hass, frozen_time)
@@ -118,21 +134,30 @@ async def test_activity_detection(
     _bump(fake_ollama, "qwen3:30b", "2026-10-11T02:20:00Z")
     await _poll(hass, frozen_time)
     used = dt_util.utcnow()
-    assert hass.states.get("binary_sensor.qwen3_30b_active").state == STATE_ON
+    assert (
+        hass.states.get("binary_sensor.ollama_10_2_6_50_qwen3_30b_active").state
+        == STATE_ON
+    )
     assert hass.states.get("binary_sensor.ollama_10_2_6_50_active").state == STATE_ON
     assert dt_util.parse_datetime(
-        hass.states.get("sensor.qwen3_30b_last_used").state
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_30b_last_used").state
     ) == used.replace(microsecond=0)
     assert hass.states.get("sensor.ollama_10_2_6_50_last_activity").state == (
-        hass.states.get("sensor.qwen3_30b_last_used").state
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_30b_last_used").state
     )
 
     # The activity window (60 s) passes without further requests.
     for _ in range(6):
         await _poll(hass, frozen_time)
-    assert hass.states.get("binary_sensor.qwen3_30b_active").state == STATE_OFF
+    assert (
+        hass.states.get("binary_sensor.ollama_10_2_6_50_qwen3_30b_active").state
+        == STATE_OFF
+    )
     assert hass.states.get("binary_sensor.ollama_10_2_6_50_active").state == STATE_OFF
-    assert hass.states.get("sensor.qwen3_30b_last_used").state != "unknown"
+    assert (
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_30b_last_used").state
+        != "unknown"
+    )
 
 
 async def test_load_unload_events(
@@ -147,14 +172,30 @@ async def test_load_unload_events(
     await _poll(hass, frozen_time)
 
     assert fired == [("model_unloaded", "qwen3:30b"), ("model_loaded", "qwen3:8b")]
-    assert hass.states.get("binary_sensor.qwen3_8b_loaded").state == STATE_ON
-    assert hass.states.get("binary_sensor.qwen3_30b_loaded").state == STATE_OFF
+    assert (
+        hass.states.get("binary_sensor.ollama_10_2_6_50_qwen3_8b_loaded").state
+        == STATE_ON
+    )
+    assert (
+        hass.states.get("binary_sensor.ollama_10_2_6_50_qwen3_30b_loaded").state
+        == STATE_OFF
+    )
     # Loading alone is not use.
-    assert hass.states.get("binary_sensor.qwen3_8b_active").state == STATE_OFF
-    assert hass.states.get("sensor.qwen3_8b_last_used").state == "unknown"
-    assert hass.states.get("sensor.qwen3_30b_vram").state == "0.0"
-    assert hass.states.get("sensor.qwen3_30b_gpu_share").state == "unknown"
-    assert hass.states.get("sensor.qwen3_8b_gpu_share").state == "100.0"
+    assert (
+        hass.states.get("binary_sensor.ollama_10_2_6_50_qwen3_8b_active").state
+        == STATE_OFF
+    )
+    assert (
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_8b_last_used").state == "unknown"
+    )
+    assert hass.states.get("sensor.ollama_10_2_6_50_qwen3_30b_vram").state == "0.0"
+    assert (
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_30b_gpu_share").state
+        == "unknown"
+    )
+    assert (
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_8b_gpu_share").state == "100.0"
+    )
     assert hass.states.get("binary_sensor.ollama_10_2_6_50_cpu_offload").state == (
         STATE_OFF
     )
@@ -197,22 +238,39 @@ async def test_dynamic_model_devices(
         ("model_installed", "granite4:tiny-h"),
         ("model_removed", "qwen3-embedding:0.6b"),
     ]
-    assert hass.states.get("sensor.granite4_tiny_h_vram").state == "0.0"
-    assert hass.states.get("button.granite4_tiny_h_unload").state == STATE_UNAVAILABLE
-    assert hass.states.get("sensor.qwen3_embedding_0_6b_vram") is None
-    assert entity_registry.async_get("sensor.qwen3_embedding_0_6b_vram") is None
     assert (
-        device_registry.async_get_device_by_identifier(
+        hass.states.get("sensor.ollama_10_2_6_50_granite4_tiny_h_vram").state == "0.0"
+    )
+    assert (
+        hass.states.get("button.ollama_10_2_6_50_granite4_tiny_h_unload").state
+        == STATE_UNAVAILABLE
+    )
+    assert hass.states.get("sensor.ollama_10_2_6_50_qwen3_embedding_0_6b_vram") is None
+    assert (
+        entity_registry.async_get("sensor.ollama_10_2_6_50_qwen3_embedding_0_6b_vram")
+        is None
+    )
+    assert (
+        device_registry.async_get_child_device_by_identifier(
             (DOMAIN, "01TESTENTRY_model_qwen3-embedding:0.6b"), "01TESTENTRY"
         )
         is None
+    )
+    assert (
+        device_registry.async_get_child_device_by_identifier(
+            (DOMAIN, "01TESTENTRY_model_granite4:tiny-h"), "01TESTENTRY"
+        )
+        is not None
     )
     assert hass.states.get("sensor.ollama_10_2_6_50_installed_models").state == "3"
 
     # The removed model comes back.
     fake_ollama.installed.append({"name": "qwen3-embedding:0.6b", "size": 1})
     await _poll(hass, frozen_time)
-    assert hass.states.get("sensor.qwen3_embedding_0_6b_vram").state == "0.0"
+    assert (
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_embedding_0_6b_vram").state
+        == "0.0"
+    )
     assert init_integration.state is ConfigEntryState.LOADED
 
 
@@ -236,16 +294,26 @@ async def test_loaded_model_matching(
     fake_ollama.loaded = [alias, stranger]
     await _poll(hass, frozen_time)
 
-    assert hass.states.get("binary_sensor.qwen3_8b_loaded").state == STATE_ON
-    assert hass.states.get("binary_sensor.mystery_1b_loaded").state == STATE_ON
-    assert hass.states.get("sensor.mystery_1b_unloads_at").state == "unknown"
-    assert hass.states.get("sensor.mystery_1b_size_on_disk") is None
-    device = device_registry.async_get_device_by_identifier(
+    assert (
+        hass.states.get("binary_sensor.ollama_10_2_6_50_qwen3_8b_loaded").state
+        == STATE_ON
+    )
+    assert (
+        hass.states.get("binary_sensor.ollama_10_2_6_50_mystery_1b_loaded").state
+        == STATE_ON
+    )
+    assert (
+        hass.states.get("sensor.ollama_10_2_6_50_mystery_1b_unloads_at").state
+        == "unknown"
+    )
+    assert hass.states.get("sensor.ollama_10_2_6_50_mystery_1b_size_on_disk") is None
+    device = device_registry.async_get_child_device_by_identifier(
         (DOMAIN, "01TESTENTRY_model_mystery:1b"), "01TESTENTRY"
     )
     assert device is not None
-    assert device.model is None
-    assert device.sw_version is None
+    assert hass.states.get("sensor.ollama_10_2_6_50_mystery_1b_family").state == (
+        "unknown"
+    )
     assert hass.states.get("binary_sensor.ollama_10_2_6_50_cpu_offload").state == (
         STATE_ON
     )
@@ -261,7 +329,10 @@ async def test_unreachable_and_repair(
     """Entities go unavailable; a repair appears after 5 minutes and clears."""
     fake_ollama.fail = True
     await _poll(hass, frozen_time)
-    assert hass.states.get("sensor.qwen3_30b_vram").state == STATE_UNAVAILABLE
+    assert (
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_30b_vram").state
+        == STATE_UNAVAILABLE
+    )
     assert hass.states.get("sensor.ollama_10_2_6_50_version").state == (
         STATE_UNAVAILABLE
     )
@@ -283,7 +354,10 @@ async def test_unreachable_and_repair(
     assert hass.states.get("binary_sensor.ollama_10_2_6_50_reachable").state == (
         STATE_ON
     )
-    assert hass.states.get("sensor.qwen3_30b_vram").state != STATE_UNAVAILABLE
+    assert (
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_30b_vram").state
+        != STATE_UNAVAILABLE
+    )
 
 
 async def test_invalid_response(
@@ -296,7 +370,10 @@ async def test_invalid_response(
     """A malformed answer makes the entities unavailable."""
     fake_ollama.response("GET", "/api/tags", 200, {"oops": True})
     await _poll(hass, frozen_time)
-    assert hass.states.get("sensor.qwen3_30b_vram").state == STATE_UNAVAILABLE
+    assert (
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_30b_vram").state
+        == STATE_UNAVAILABLE
+    )
     assert "Unexpected response from the Ollama server" in caplog.text
 
 
@@ -362,7 +439,7 @@ async def test_activity_restored(
     mock_config_entry.add_to_hass(hass)
     await hass.config_entries.async_setup(mock_config_entry.entry_id)
     await hass.async_block_till_done()
-    assert hass.states.get("sensor.qwen3_8b_last_used").state == (
+    assert hass.states.get("sensor.ollama_10_2_6_50_qwen3_8b_last_used").state == (
         "2026-10-10T20:00:00+00:00"
     )
 
@@ -404,15 +481,31 @@ async def test_stale_devices_removed_on_setup(
 ) -> None:
     """Devices of models deleted while Home Assistant was down are removed."""
     mock_config_entry.add_to_hass(hass)
-    device_registry.async_get_or_create(
+    server = device_registry.async_get_or_create(
+        config_entry_id=mock_config_entry.entry_id,
+        identifiers={(DOMAIN, "01TESTENTRY")},
+    )
+    # A child device (0.3+) and a full device (older versions) of vanished models.
+    device_registry.async_get_or_create_child(
         config_entry_id=mock_config_entry.entry_id,
         identifiers={(DOMAIN, "01TESTENTRY_model_gone:1b")},
+        parent_device_id=server.id,
+    )
+    device_registry.async_get_or_create(
+        config_entry_id=mock_config_entry.entry_id,
+        identifiers={(DOMAIN, "01TESTENTRY_model_old:1b")},
     )
     await hass.config_entries.async_setup(mock_config_entry.entry_id)
     await hass.async_block_till_done()
     assert (
-        device_registry.async_get_device_by_identifier(
+        device_registry.async_get_child_device_by_identifier(
             (DOMAIN, "01TESTENTRY_model_gone:1b"), "01TESTENTRY"
+        )
+        is None
+    )
+    assert (
+        device_registry.async_get_device_by_identifier(
+            (DOMAIN, "01TESTENTRY_model_old:1b"), "01TESTENTRY"
         )
         is None
     )
@@ -427,14 +520,15 @@ async def test_remove_config_entry_device(
     server = device_registry.async_get_device_by_identifier(
         (DOMAIN, "01TESTENTRY"), "01TESTENTRY"
     )
-    model = device_registry.async_get_device_by_identifier(
+    model = device_registry.async_get_child_device_by_identifier(
         (DOMAIN, "01TESTENTRY_model_qwen3:8b"), "01TESTENTRY"
     )
-    stale = device_registry.async_get_or_create(
+    assert server is not None
+    stale = device_registry.async_get_or_create_child(
         config_entry_id=init_integration.entry_id,
         identifiers={(DOMAIN, "01TESTENTRY_model_gone:1b")},
+        parent_device_id=server.id,
     )
-    assert server is not None
     assert model is not None
     assert not await async_remove_config_entry_device(hass, init_integration, server)
     assert not await async_remove_config_entry_device(hass, init_integration, model)
@@ -461,13 +555,24 @@ async def test_sensor_values(
     assert hass.states.get("binary_sensor.ollama_10_2_6_50_cpu_offload").state == (
         STATE_ON
     )
-    assert hass.states.get("sensor.qwen3_30b_context_length").state == "16384"
-    assert hass.states.get("sensor.qwen3_30b_unloads_at").state == (
+    assert (
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_30b_context_length").state
+        == "16384"
+    )
+    assert hass.states.get("sensor.ollama_10_2_6_50_qwen3_30b_unloads_at").state == (
         "2026-10-11T02:11:57+00:00"
     )
-    assert hass.states.get("sensor.qwen3_30b_memory").state == "19.67555839"
-    assert hass.states.get("sensor.qwen3_30b_gpu_share").state == "35.4"
-    assert hass.states.get("sensor.qwen3_8b_context_length").state == "unknown"
+    assert (
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_30b_memory").state
+        == "19.67555839"
+    )
+    assert (
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_30b_gpu_share").state == "35.4"
+    )
+    assert (
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_8b_context_length").state
+        == "unknown"
+    )
 
 
 async def test_server_gpu_share_without_models(
@@ -489,7 +594,7 @@ async def test_size_on_disk_disabled_by_default(
     entity_registry: er.EntityRegistry,
 ) -> None:
     """Size on disk is created disabled."""
-    entry = entity_registry.async_get("sensor.qwen3_8b_size_on_disk")
+    entry = entity_registry.async_get("sensor.ollama_10_2_6_50_qwen3_8b_size_on_disk")
     assert entry is not None
     assert entry.disabled_by is er.RegistryEntryDisabler.INTEGRATION
 
@@ -506,21 +611,29 @@ async def test_size_on_disk_enabled(
         {"name": "mystery:1b", "size": 1, "size_vram": 1, "details": {}}
     )
     await _poll(hass, frozen_time)
-    for entity_id in ("sensor.qwen3_8b_size_on_disk", "sensor.mystery_1b_size_on_disk"):
+    for entity_id in (
+        "sensor.ollama_10_2_6_50_qwen3_8b_size_on_disk",
+        "sensor.ollama_10_2_6_50_mystery_1b_size_on_disk",
+    ):
         entity_registry.async_update_entity(entity_id, disabled_by=None)
     await hass.config_entries.async_reload(init_integration.entry_id)
     await hass.async_block_till_done()
-    assert hass.states.get("sensor.qwen3_8b_size_on_disk").state == "5.225388164"
-    assert hass.states.get("sensor.mystery_1b_size_on_disk").state == "unknown"
+    assert (
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_8b_size_on_disk").state
+        == "5.225388164"
+    )
+    assert (
+        hass.states.get("sensor.ollama_10_2_6_50_mystery_1b_size_on_disk").state
+        == "unknown"
+    )
 
 
 def test_model_state_without_source() -> None:
-    """A model state without data has no description or digest."""
+    """A model state without data has empty details."""
     state = ModelState(
         name="x", installed=None, loaded=None, last_used=None, active=False
     )
-    assert state.device_model is None
-    assert state.digest is None
+    assert state.details == ModelDetails(None, None, None)
 
 
 async def test_activity_flushed_on_reload(
@@ -533,7 +646,7 @@ async def test_activity_flushed_on_reload(
     """A reload writes pending activity at once, so the new coordinator sees it."""
     _bump(fake_ollama, "qwen3:30b", "2026-10-11T02:30:00Z")
     await _poll(hass, frozen_time)
-    used = hass.states.get("sensor.qwen3_30b_last_used").state
+    used = hass.states.get("sensor.ollama_10_2_6_50_qwen3_30b_last_used").state
     assert f"{DOMAIN}.01TESTENTRY" not in hass_storage
 
     await hass.config_entries.async_reload(init_integration.entry_id)
@@ -541,7 +654,7 @@ async def test_activity_flushed_on_reload(
     assert set(hass_storage[f"{DOMAIN}.01TESTENTRY"]["data"]["last_used"]) == {
         "qwen3:30b"
     }
-    assert hass.states.get("sensor.qwen3_30b_last_used").state == used
+    assert hass.states.get("sensor.ollama_10_2_6_50_qwen3_30b_last_used").state == used
 
     # Nothing pending: unloading does not write again.
     hass_storage.pop(f"{DOMAIN}.01TESTENTRY")
@@ -559,21 +672,24 @@ async def test_malformed_row_keeps_devices(
 ) -> None:
     """A row without a name rejects the poll instead of removing devices."""
     entity_registry.async_update_entity(
-        "sensor.qwen3_8b_vram", name="My renamed sensor"
+        "sensor.ollama_10_2_6_50_qwen3_8b_vram", name="My renamed sensor"
     )
     fake_ollama.installed = [
         m for m in fake_ollama.installed if m["name"] != "qwen3:8b"
     ] + [{"model": "qwen3:8b", "size": 1}]
     await _poll(hass, frozen_time)
 
-    assert hass.states.get("sensor.qwen3_8b_vram").state == STATE_UNAVAILABLE
     assert (
-        device_registry.async_get_device_by_identifier(
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_8b_vram").state
+        == STATE_UNAVAILABLE
+    )
+    assert (
+        device_registry.async_get_child_device_by_identifier(
             (DOMAIN, "01TESTENTRY_model_qwen3:8b"), "01TESTENTRY"
         )
         is not None
     )
-    entry = entity_registry.async_get("sensor.qwen3_8b_vram")
+    entry = entity_registry.async_get("sensor.ollama_10_2_6_50_qwen3_8b_vram")
     assert entry is not None
     assert entry.name == "My renamed sensor"
 
@@ -597,14 +713,22 @@ async def test_outage_changes_are_not_activity(
     await _poll(hass, frozen_time)
 
     assert fired == [("model_loaded", "qwen3:8b")]
-    assert hass.states.get("sensor.qwen3_30b_last_used").state == "unknown"
-    assert hass.states.get("sensor.qwen3_8b_last_used").state == "unknown"
+    assert (
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_30b_last_used").state
+        == "unknown"
+    )
+    assert (
+        hass.states.get("sensor.ollama_10_2_6_50_qwen3_8b_last_used").state == "unknown"
+    )
     assert hass.states.get("binary_sensor.ollama_10_2_6_50_active").state == STATE_OFF
 
     # The next change after recovery counts again.
     _bump(fake_ollama, "qwen3:30b", "2026-10-11T02:45:00Z")
     await _poll(hass, frozen_time)
-    assert hass.states.get("binary_sensor.qwen3_30b_active").state == STATE_ON
+    assert (
+        hass.states.get("binary_sensor.ollama_10_2_6_50_qwen3_30b_active").state
+        == STATE_ON
+    )
 
 
 async def test_active_model_reporting(
@@ -676,3 +800,115 @@ async def test_active_model_reporting(
     assert state.attributes["active_models"] == []
     assert state.attributes["last_active_model"] == "qwen3:30b"
     assert hass.states.get(active_model).state == "unknown"
+
+
+async def test_upgrade_converts_model_devices_in_place(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    fake_ollama: FakeOllama,
+    frozen_time: FrozenDateTimeFactory,
+    device_registry: dr.DeviceRegistry,
+    entity_registry: er.EntityRegistry,
+    area_registry: ar.AreaRegistry,
+) -> None:
+    """Model devices from 0.2 become child devices without losing anything."""
+    mock_config_entry.add_to_hass(hass)
+    office = area_registry.async_create("Office")
+    rack = area_registry.async_create("Rack")
+    # Registry state as left by 0.2: full model devices linked with via_device.
+    server = device_registry.async_get_or_create(
+        config_entry_id=mock_config_entry.entry_id,
+        identifiers={(DOMAIN, "01TESTENTRY")},
+        name="Ollama (10.2.6.50)",
+    )
+    old_model = device_registry.async_get_or_create(
+        config_entry_id=mock_config_entry.entry_id,
+        identifiers={(DOMAIN, "01TESTENTRY_model_qwen3:8b")},
+        name="qwen3:8b",
+        manufacturer="Ollama",
+        model="qwen3 · 8.2B · Q4_K_M",
+        sw_version="500a1f067a9f",
+        via_device_id=server.id,
+    )
+    device_registry.async_update_device(
+        old_model.id, name_by_user="Small Qwen", area_id=office.id
+    )
+    old_vram = entity_registry.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        "01TESTENTRY_model_qwen3:8b_model_vram",
+        config_entry=mock_config_entry,
+        device_id=old_model.id,
+        suggested_object_id="qwen3_8b_vram",
+    )
+    entity_registry.async_update_entity(
+        old_vram.entity_id, name="Qwen VRAM", area_id=rack.id
+    )
+    old_loaded = entity_registry.async_get_or_create(
+        "binary_sensor",
+        DOMAIN,
+        "01TESTENTRY_model_qwen3:8b_loaded",
+        config_entry=mock_config_entry,
+        device_id=old_model.id,
+        suggested_object_id="qwen3_8b_loaded",
+        disabled_by=er.RegistryEntryDisabler.USER,
+    )
+    assert old_vram.entity_id == "sensor.qwen3_8b_vram"
+    # Upgrading means a restart: the registry no longer treats these devices as
+    # registered by the running integration.
+    device_registry.async_config_entry_unloaded(mock_config_entry.entry_id)
+
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    # Same device id, now a child of the server; user settings kept.
+    child = device_registry.async_get_child_device_by_identifier(
+        (DOMAIN, "01TESTENTRY_model_qwen3:8b"), "01TESTENTRY"
+    )
+    assert child is not None
+    assert child.id == old_model.id
+    assert child.parent_device_id == server.id
+    assert child.name == "qwen3:8b"
+    assert child.name_by_user == "Small Qwen"
+    assert child.area_id == office.id
+    assert (
+        device_registry.async_get_device_by_identifier(
+            (DOMAIN, "01TESTENTRY_model_qwen3:8b"), "01TESTENTRY"
+        )
+        is None
+    )
+
+    # Entities keep entity_id (and so their history), overrides and device link.
+    vram = entity_registry.async_get("sensor.qwen3_8b_vram")
+    assert vram is not None
+    assert vram.unique_id == old_vram.unique_id
+    assert vram.name == "Qwen VRAM"
+    assert vram.area_id == rack.id
+    assert vram.device_id == child.id
+    # (Created here without the GB display unit a real 0.2 install has.)
+    assert hass.states.get("sensor.qwen3_8b_vram").state == "0"
+    loaded = entity_registry.async_get(old_loaded.entity_id)
+    assert loaded is not None
+    assert loaded.disabled_by is er.RegistryEntryDisabler.USER
+    assert loaded.device_id == child.id
+    assert entity_registry.async_get_entity_id(
+        "sensor", DOMAIN, "01TESTENTRY_model_qwen3:8b_model_vram"
+    ) == ("sensor.qwen3_8b_vram")
+    assert hass.states.get("sensor.ollama_10_2_6_50_qwen3_8b_vram") is None
+    # New entities of the converted device join it.
+    new_entity_id = entity_registry.async_get_entity_id(
+        "sensor", DOMAIN, "01TESTENTRY_model_qwen3:8b_quantization"
+    )
+    assert new_entity_id is not None
+    new_entity = entity_registry.async_get(new_entity_id)
+    assert new_entity is not None
+    assert hass.states.get(new_entity_id).state == "Q4_K_M"
+    assert new_entity.device_id == child.id
+
+    # Removing the model from the server still cleans up the converted device.
+    fake_ollama.installed = [
+        m for m in fake_ollama.installed if m["name"] != "qwen3:8b"
+    ]
+    await _poll(hass, frozen_time)
+    assert device_registry.async_get(child.id) is None
+    assert entity_registry.async_get("sensor.qwen3_8b_vram") is None

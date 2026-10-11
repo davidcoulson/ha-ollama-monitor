@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterable
 
 from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import ChildDeviceInfo, DeviceInfo
 from homeassistant.helpers.entity import Entity, EntityDescription
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -71,14 +71,13 @@ class OllamaModelEntity(CoordinatorEntity[OllamaCoordinator]):
         self.model = model
         entry = coordinator.config_entry
         self._attr_unique_id = f"{entry.entry_id}_model_{model}_{description.key}"
-        state = coordinator.data.models[model]
-        self._attr_device_info = DeviceInfo(
+        # Models are child devices of the server. A model device created by an
+        # earlier version (a full device linked with via_device) is converted in
+        # place by the device registry, keeping its id, name, area and entities.
+        self._attr_device_info = ChildDeviceInfo(
             identifiers={model_identifier(entry, model)},
             name=model,
-            manufacturer="Ollama",
-            model=state.device_model,
-            sw_version=state.digest[:12] if state.digest else None,
-            via_device_id=dr.async_get_device_id_by_identifier(
+            parent_device_id=dr.async_get_device_id_by_identifier(
                 coordinator.hass,
                 server_identifier(entry),
                 config_entry_id=entry.entry_id,

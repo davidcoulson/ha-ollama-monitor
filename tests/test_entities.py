@@ -140,13 +140,19 @@ async def test_unload_button(
     fake_ollama: FakeOllama,
 ) -> None:
     """The unload button sends keep_alive 0; it is unavailable when unloaded."""
-    assert hass.states.get("button.qwen3_30b_unload").state == STATE_UNKNOWN
-    assert hass.states.get("button.qwen3_8b_unload").state == STATE_UNAVAILABLE
+    assert (
+        hass.states.get("button.ollama_10_2_6_50_qwen3_30b_unload").state
+        == STATE_UNKNOWN
+    )
+    assert (
+        hass.states.get("button.ollama_10_2_6_50_qwen3_8b_unload").state
+        == STATE_UNAVAILABLE
+    )
 
     await hass.services.async_call(
         BUTTON_DOMAIN,
         SERVICE_PRESS,
-        {ATTR_ENTITY_ID: "button.qwen3_30b_unload"},
+        {ATTR_ENTITY_ID: "button.ollama_10_2_6_50_qwen3_30b_unload"},
         blocking=True,
     )
     assert fake_ollama.calls("POST", "/api/generate") == [
@@ -182,7 +188,7 @@ async def test_unload_button_errors(
         await hass.services.async_call(
             BUTTON_DOMAIN,
             SERVICE_PRESS,
-            {ATTR_ENTITY_ID: "button.qwen3_30b_unload"},
+            {ATTR_ENTITY_ID: "button.ollama_10_2_6_50_qwen3_30b_unload"},
             blocking=True,
         )
 
@@ -198,7 +204,7 @@ async def test_unload_button_connection_error(
         await hass.services.async_call(
             BUTTON_DOMAIN,
             SERVICE_PRESS,
-            {ATTR_ENTITY_ID: "button.qwen3_30b_unload"},
+            {ATTR_ENTITY_ID: "button.ollama_10_2_6_50_qwen3_30b_unload"},
             blocking=True,
         )
     assert not isinstance(err.value, ServiceValidationError)

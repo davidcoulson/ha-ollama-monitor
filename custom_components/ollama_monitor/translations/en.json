@@ -162,6 +162,15 @@
       "last_used": {
         "name": "Last used"
       },
+      "family": {
+        "name": "Family"
+      },
+      "parameter_size": {
+        "name": "Parameter size"
+      },
+      "quantization": {
+        "name": "Quantization"
+      },
       "size_on_disk": {
         "name": "Size on disk"
       }

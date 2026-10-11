@@ -24,9 +24,9 @@ everything else from changes between polls.
 
 - **One device per Ollama server** (manufacturer *Ollama*, software version = the
   server's version, link to the server URL).
-- **One device per model** (installed or loaded), attached to the server device
-  via `via_device`. The device model shows family, parameter count and
-  quantization (for example `qwen3 · 8.2B · Q4_K_M`).
+- **One sub-device per model** (installed or loaded), named by the model tag (for
+  example `qwen3:8b`) and shown under the server device. Family, parameter size and
+  quantization are diagnostic sensors on the model device.
 
 Model devices and their entities are created and removed automatically as models are
 installed, loaded, unloaded and deleted, without reloading the integration. A model
@@ -64,6 +64,9 @@ by hand from the device page.
 | Context length | sensor (diagnostic) | Context window the model was loaded with |
 | Unloads at | sensor (timestamp) | `expires_at`; unknown when not loaded or when kept alive forever |
 | Last used | sensor (timestamp) | Last detected request; survives restarts |
+| Family | sensor (diagnostic) | e.g. `qwen3` |
+| Parameter size | sensor (diagnostic) | e.g. `8.2B` |
+| Quantization | sensor (diagnostic) | e.g. `Q4_K_M` |
 | Size on disk | sensor (data size, diagnostic, disabled by default) | From `/api/tags` |
 | Unload | button | Frees the model's memory (`keep_alive: 0`); available only while loaded |
 
@@ -101,6 +104,14 @@ Consequences:
   itself when the server answers again.
 - *Download diagnostics* returns the options, the last API responses and the activity
   state, with the server URL redacted.
+
+### Upgrading from 0.2 or earlier
+
+Model devices used to be separate devices linked to the server. From 0.3 they are
+sub-devices of the server. Home Assistant converts the existing model devices in place
+on the first start after the update: device and entity IDs, names, areas, labels,
+disabled entities and history are kept. Models added afterwards get entity IDs that
+start with the server name (for example `sensor.ollama_10_2_6_50_qwen3_8b_vram`).
 
 ## Installation
 

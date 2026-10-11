@@ -101,7 +101,7 @@ async def test_delete(
     ]
     await _call(hass, SERVICE_DELETE_MODEL)
     assert fake_ollama.calls("DELETE", "/api/delete") == [{"model": "qwen3:8b"}]
-    assert hass.states.get("sensor.qwen3_8b_vram") is None
+    assert hass.states.get("sensor.ollama_10_2_6_50_qwen3_8b_vram") is None
 
 
 @pytest.mark.usefixtures("management")
@@ -137,7 +137,7 @@ async def test_pull(
     assert "Pulling granite4:tiny-h on Ollama (10.2.6.50) finished: success" in (
         caplog.text
     )
-    assert hass.states.get("sensor.granite4_tiny_h_vram") is not None
+    assert hass.states.get("sensor.ollama_10_2_6_50_granite4_tiny_h_vram") is not None
 
 
 @pytest.mark.usefixtures("management")

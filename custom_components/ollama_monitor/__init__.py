@@ -81,6 +81,11 @@ def async_sync_devices(hass: HomeAssistant, entry: OllamaConfigEntry) -> None:
         registry.async_update_device(server.id, sw_version=coordinator.data.version)
 
     current = {model_identifier(entry, name) for name in coordinator.data.models}
+    for child in dr.async_child_entries_for_config_entry(registry, entry.entry_id):
+        if not child.identifiers & current:
+            registry.async_remove_device(child.id)
+    # Model devices of versions before 0.3 are full devices; current ones are
+    # converted to child devices when their entities are added.
     server_id = server_identifier(entry)
     for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
         if server_id in device.identifiers or device.identifiers & current:
@@ -99,7 +104,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: OllamaConfigEntry) -> N
 
 
 async def async_remove_config_entry_device(
-    hass: HomeAssistant, entry: OllamaConfigEntry, device: dr.DeviceEntry
+    hass: HomeAssistant, entry: OllamaConfigEntry, device: dr.AnyDeviceEntry
 ) -> bool:
     """Allow deleting model devices that are no longer on the server."""
     if server_identifier(entry) in device.identifiers:

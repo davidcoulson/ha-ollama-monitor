@@ -78,6 +78,15 @@
       },
       "active_model": {
         "default": "mdi:brain"
+      },
+      "family": {
+        "default": "mdi:family-tree"
+      },
+      "parameter_size": {
+        "default": "mdi:counter"
+      },
+      "quantization": {
+        "default": "mdi:scale-balance"
       }
     }
   },

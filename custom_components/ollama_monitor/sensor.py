@@ -147,6 +147,24 @@ MODEL_SENSORS: tuple[OllamaModelSensorEntityDescription, ...] = (
         value_fn=lambda state: state.last_used,
     ),
     OllamaModelSensorEntityDescription(
+        key="family",
+        translation_key="family",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda state: state.details.family,
+    ),
+    OllamaModelSensorEntityDescription(
+        key="parameter_size",
+        translation_key="parameter_size",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda state: state.details.parameter_size,
+    ),
+    OllamaModelSensorEntityDescription(
+        key="quantization",
+        translation_key="quantization",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda state: state.details.quantization_level,
+    ),
+    OllamaModelSensorEntityDescription(
         **_data_size(
             "size_on_disk",
             state_class=None,

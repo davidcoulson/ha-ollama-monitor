@@ -21,6 +21,7 @@ from homeassistant.util import dt as dt_util
 from .api import (
     InstalledModel,
     LoadedModel,
+    ModelDetails,
     OllamaClient,
     OllamaConnectionError,
     OllamaError,
@@ -69,27 +70,10 @@ class ModelState:
     active: bool
 
     @property
-    def device_model(self) -> str | None:
-        """Return a short description for the device registry."""
-        if (source := self.installed or self.loaded) is None:
-            return None
-        details = source.details
-        parts = [
-            part
-            for part in (
-                details.family,
-                details.parameter_size,
-                details.quantization_level,
-            )
-            if part
-        ]
-        return " · ".join(parts) or None
-
-    @property
-    def digest(self) -> str | None:
-        """Return the model digest."""
+    def details(self) -> ModelDetails:
+        """Return family, parameter size and quantization of the model."""
         source = self.installed or self.loaded
-        return source.digest if source else None
+        return source.details if source else ModelDetails(None, None, None)
 
 
 @dataclass(frozen=True, slots=True)
