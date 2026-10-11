@@ -258,10 +258,10 @@ async def test_delete(
 
 
 async def test_pull(client: OllamaClient, aioclient_mock: AiohttpClientMocker) -> None:
-    """Pull yields progress, skips blank and non-object lines."""
+    """Pull yields progress and skips blank lines."""
     aioclient_mock.post(
         f"{URL_BASE}/api/pull",
-        text='{"status":"pulling manifest"}\n\n[1]\n{"status":"success"}\n',
+        text='{"status":"pulling manifest"}\n\n{"status":"success"}\n',
     )
     messages = [m async for m in client.async_pull_model("qwen3:8b")]
     assert messages == [{"status": "pulling manifest"}, {"status": "success"}]
@@ -280,6 +280,12 @@ async def test_pull_errors(
     assert await anext(progress) == {"status": "pulling manifest"}
     with pytest.raises(OllamaResponseError, match="file does not exist"):
         await anext(progress)
+
+    for body in ("", '{"status":"pulling manifest"}\n', "[1]\n"):
+        aioclient_mock.clear_requests()
+        aioclient_mock.post(f"{URL_BASE}/api/pull", text=body)
+        with pytest.raises(OllamaResponseError):
+            [m async for m in client.async_pull_model("x")]
 
     aioclient_mock.clear_requests()
     aioclient_mock.post(f"{URL_BASE}/api/pull", text="garbage\n")

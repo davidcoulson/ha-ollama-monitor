@@ -144,10 +144,25 @@ async def test_pull(
 async def test_pull_empty_stream(
     hass: HomeAssistant, init_integration: MockConfigEntry, fake_ollama: FakeOllama
 ) -> None:
-    """A pull that returns no progress still refreshes."""
+    """A pull that returns nothing is an error."""
     fake_ollama.pull_lines = []
+    with pytest.raises(HomeAssistantError) as err:
+        await _call(hass, SERVICE_PULL_MODEL)
+    assert err.value.translation_key == "action_failed"
+
+
+@pytest.mark.usefixtures("management")
+async def test_pull_ends_early(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    fake_ollama: FakeOllama,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A stream that ends without success is logged as a failure."""
+    fake_ollama.pull_lines = [b'{"status":"pulling manifest"}\n']
     await _call(hass, SERVICE_PULL_MODEL)
-    assert len(fake_ollama.calls("POST", "/api/pull")) == 1
+    assert "Pulling qwen3:8b on Ollama (10.2.6.50) failed" in caplog.text
+    assert "finished" not in caplog.text
 
 
 @pytest.mark.usefixtures("management")

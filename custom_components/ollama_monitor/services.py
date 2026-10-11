@@ -124,19 +124,17 @@ async def _async_handle_pull(call: ServiceCall) -> None:
     """Start a pull; the download continues in the background.
 
     The first progress message is awaited so that an unknown model name or an
-    unreachable server is reported to the caller right away.
+    unreachable server is reported to the caller right away. The stream always
+    yields at least one message or raises.
     """
     entry = _get_entry(call)
     _require_management(entry)
     model: str = call.data[ATTR_MODEL]
     progress = entry.runtime_data.client.async_pull_model(model)
     try:
-        first = await anext(progress, None)
+        first = await anext(progress)
     except OllamaError as err:
         _raise_action_error(err, model)
-    if first is None:
-        await entry.runtime_data.coordinator.async_request_refresh()
-        return
     LOGGER.info("Pulling %s on %s", model, entry.title)
     entry.async_create_background_task(
         call.hass,

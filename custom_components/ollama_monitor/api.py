@@ -261,7 +261,8 @@ class OllamaClient:
         """Pull a model and yield the progress messages as they arrive.
 
         Ollama reports failures that happen after the download started as an
-        `error` message in the stream; they are raised as OllamaResponseError.
+        `error` message in the stream; they are raised as OllamaResponseError, as is
+        a stream that ends without the final `success` status.
         """
         try:
             async with self._session.post(
@@ -270,6 +271,7 @@ class OllamaClient:
                 timeout=PULL_TIMEOUT,
             ) as resp:
                 await _raise_for_status(resp)
+                finished = False
                 async for raw_line in resp.content:
                     if not (line := raw_line.strip()):
                         continue
@@ -280,10 +282,15 @@ class OllamaClient:
                             "Invalid progress message from /api/pull"
                         ) from err
                     if not isinstance(message, dict):
-                        continue
+                        raise OllamaResponseError(
+                            "Invalid progress message from /api/pull"
+                        )
                     if error := message.get("error"):
                         raise OllamaResponseError(str(error))
+                    finished = message.get("status") == "success"
                     yield message
+                if not finished:
+                    raise OllamaResponseError("The pull ended before it completed")
         except (TimeoutError, aiohttp.ClientError) as err:
             raise OllamaConnectionError(
                 f"Error talking to Ollama at {self._base}: {err!r}"
