@@ -10,6 +10,10 @@ can sit alongside it (they use different domains: `ollama` vs `ollama_monitor`).
 
 Everything is configured in the UI. There is no YAML configuration.
 
+**Requirements:** Home Assistant 2026.10 or newer and any Ollama server reachable over
+HTTP(S) (developed and tested against Ollama 0.40.2; fields that older servers do not
+report, such as the context length, show as unknown).
+
 ## Feature set
 
 Ollama's HTTP API has no authentication, no metrics endpoint and no request counters,
@@ -123,6 +127,78 @@ To change the URL later use **Reconfigure** on the integration entry.
 | Activity window | 60 s | How long a model counts as *Active* after a detected request |
 | Check GitHub for new Ollama releases | on | Creates the update entity; polls the GitHub API every 6 hours |
 | Allow model management | off | Enables the pull and delete actions |
+
+## Use cases and examples
+
+- Put *VRAM used*, *GPU share* and the loaded model list next to your GPU's own
+  sensors (for example the Unraid integration's GPU utilisation and memory) to see
+  which model is holding the card.
+- Get told when a model spills over to system RAM, which makes it several times slower:
+
+  ```yaml
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.ollama_10_2_6_50_cpu_offload
+      to: "on"
+      for: "00:01:00"
+  actions:
+    - action: notify.notify
+      data:
+        message: >
+          Ollama is running {{ state_attr('sensor.ollama_10_2_6_50_loaded_models', 'models') | join(', ') }}
+          partly on the CPU ({{ states('sensor.ollama_10_2_6_50_gpu_share') }} % on the GPU).
+  ```
+
+- React to a model being loaded (the event entity's `event_type` and `model` attributes):
+
+  ```yaml
+  triggers:
+    - trigger: state
+      entity_id: event.ollama_10_2_6_50_model_event
+      not_from: unavailable
+  conditions:
+    - condition: state
+      entity_id: event.ollama_10_2_6_50_model_event
+      attribute: event_type
+      state: model_loaded
+  actions:
+    - action: logbook.log
+      data:
+        name: Ollama
+        message: "Loaded {{ trigger.to_state.attributes.model }}"
+  ```
+
+- Free the GPU for something else, e.g. before a game or a transcode job:
+  `action: ollama_monitor.unload_model` with the server and model, or press the model's
+  **Unload** button.
+
+## Data updates
+
+The server is polled every *polling interval* (default 10 s) with three small GET
+requests. The GitHub release check runs every 6 hours. Pull and delete are only ever
+sent when you call those actions.
+
+## Known limitations
+
+- Ollama exposes no request counters, queue length or token rates, so *Active* and
+  *Last used* are inferred (see above) and cannot count requests.
+- GPU utilisation, temperature and total VRAM are not available from Ollama; use your
+  GPU or host integration for those.
+- Ollama has no authentication; anyone who can reach the URL can also unload, pull and
+  delete models. The integration only does that when you ask it to.
+- The update entity only notifies. Update Ollama the way you installed it (Docker image,
+  package manager).
+
+## Troubleshooting
+
+- **Failed to connect**: Ollama listens on `127.0.0.1` by default. Set
+  `OLLAMA_HOST=0.0.0.0` (in Docker: publish port 11434) and check that
+  `curl http://<host>:11434/api/version` works from the Home Assistant host.
+- **The server answered, but not like an Ollama server**: the URL points at something
+  else, or a reverse proxy rewrites the API paths.
+- **The update entity is unavailable**: GitHub could not be reached or rate-limited the
+  request; it retries every 6 hours. Turn the option off if you do not need it.
+- Download the diagnostics from the integration entry and attach them to an issue.
 
 ## Removal
 

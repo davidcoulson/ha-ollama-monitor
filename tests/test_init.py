@@ -545,3 +545,61 @@ async def test_activity_flushed_on_reload(
     hass_storage.pop(f"{DOMAIN}.01TESTENTRY")
     await hass.config_entries.async_unload(init_integration.entry_id)
     assert f"{DOMAIN}.01TESTENTRY" not in hass_storage
+
+
+async def test_malformed_row_keeps_devices(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    fake_ollama: FakeOllama,
+    frozen_time: FrozenDateTimeFactory,
+    entity_registry: er.EntityRegistry,
+    device_registry: dr.DeviceRegistry,
+) -> None:
+    """A row without a name rejects the poll instead of removing devices."""
+    entity_registry.async_update_entity(
+        "sensor.qwen3_8b_vram", name="My renamed sensor"
+    )
+    fake_ollama.installed = [
+        m for m in fake_ollama.installed if m["name"] != "qwen3:8b"
+    ] + [{"model": "qwen3:8b", "size": 1}]
+    await _poll(hass, frozen_time)
+
+    assert hass.states.get("sensor.qwen3_8b_vram").state == STATE_UNAVAILABLE
+    assert (
+        device_registry.async_get_device_by_identifier(
+            (DOMAIN, "01TESTENTRY_model_qwen3:8b"), "01TESTENTRY"
+        )
+        is not None
+    )
+    entry = entity_registry.async_get("sensor.qwen3_8b_vram")
+    assert entry is not None
+    assert entry.name == "My renamed sensor"
+
+
+async def test_outage_changes_are_not_activity(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    fake_ollama: FakeOllama,
+    frozen_time: FrozenDateTimeFactory,
+) -> None:
+    """Changes that happened during an outage are not stamped as current use."""
+    fired = _record_events(hass)
+    fake_ollama.fail = True
+    await _poll(hass, frozen_time)
+
+    # During the outage qwen3:30b served a request and qwen3:8b was loaded.
+    _bump(fake_ollama, "qwen3:30b", "2026-10-11T02:40:00Z")
+    fake_ollama.loaded.append(deepcopy(QWEN3_8B_PS))
+    await _poll(hass, frozen_time, 180)
+    fake_ollama.fail = False
+    await _poll(hass, frozen_time)
+
+    assert fired == [("model_loaded", "qwen3:8b")]
+    assert hass.states.get("sensor.qwen3_30b_last_used").state == "unknown"
+    assert hass.states.get("sensor.qwen3_8b_last_used").state == "unknown"
+    assert hass.states.get("binary_sensor.ollama_10_2_6_50_active").state == STATE_OFF
+
+    # The next change after recovery counts again.
+    _bump(fake_ollama, "qwen3:30b", "2026-10-11T02:45:00Z")
+    await _poll(hass, frozen_time)
+    assert hass.states.get("binary_sensor.qwen3_30b_active").state == STATE_ON

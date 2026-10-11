@@ -46,10 +46,8 @@ def _loaded(size: int, size_vram: int, expires: datetime | None) -> LoadedModel:
 
 
 def test_parse_loaded_models() -> None:
-    """Parse a live /api/ps payload and skip junk entries."""
-    [model] = parse_loaded_models(
-        {"models": [QWEN3_30B_PS, "junk", {"name": ""}, {"size": 1}]}
-    )
+    """Parse a live /api/ps payload."""
+    [model] = parse_loaded_models({"models": [QWEN3_30B_PS]})
     assert model.name == "qwen3:30b"
     assert model.size == 19675558390
     assert model.size_vram == 6973858774
@@ -131,11 +129,24 @@ def test_parse_installed_models_bad_capabilities() -> None:
     assert model.capabilities == ("tools",)
 
 
-@pytest.mark.parametrize("payload", [None, [], {"models": None}, {"x": []}])
+@pytest.mark.parametrize(
+    "payload",
+    [
+        None,
+        [],
+        {"models": None},
+        {"x": []},
+        {"models": [QWEN3_30B_PS, "junk"]},
+        {"models": [QWEN3_30B_PS, {"name": ""}]},
+        {"models": [{"model": "m"}]},
+    ],
+)
 def test_parse_invalid(payload: object) -> None:
-    """A payload without a model list is rejected."""
+    """A payload without a complete, usable model list is rejected."""
     with pytest.raises(OllamaResponseError):
         parse_loaded_models(payload)
+    with pytest.raises(OllamaResponseError):
+        parse_installed_models(payload)
 
 
 async def test_get_endpoints(

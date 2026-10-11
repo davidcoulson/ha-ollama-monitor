@@ -124,15 +124,19 @@ def parse_timestamp(value: Any) -> datetime | None:
 
 
 def _model_entries(payload: Any) -> list[Mapping[str, Any]]:
+    """Return the model rows, rejecting the whole list if any row is unusable.
+
+    The list is treated as the complete inventory (models missing from it get their
+    devices removed), so a partially understood answer must not be used.
+    """
     if not isinstance(payload, Mapping) or not isinstance(
         models := payload.get("models"), list
     ):
         raise OllamaResponseError("Unexpected response: missing model list")
-    return [
-        item
-        for item in models
-        if isinstance(item, Mapping) and _opt_str(item.get("name"))
-    ]
+    for item in models:
+        if not isinstance(item, Mapping) or not _opt_str(item.get("name")):
+            raise OllamaResponseError("Unexpected response: model without a name")
+    return models
 
 
 def parse_loaded_models(payload: Any) -> list[LoadedModel]:

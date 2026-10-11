@@ -185,6 +185,9 @@ class OllamaCoordinator(DataUpdateCoordinator[OllamaData]):
             hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}"
         )
         self._baseline = False
+        # Set after a failed poll: changes seen on recovery happened at an unknown
+        # time during the outage and must not count as current activity.
+        self._recovering = False
         self._expires: dict[str, datetime | None] = {}
         self._installed_names: set[str] = set()
         self._last_used: dict[str, datetime] = {}
@@ -210,6 +213,7 @@ class OllamaCoordinator(DataUpdateCoordinator[OllamaData]):
             )
         except OllamaError as err:
             self._track_unreachable()
+            self._recovering = True
             raise UpdateFailed(
                 translation_domain=DOMAIN,
                 translation_key=(
@@ -283,11 +287,13 @@ class OllamaCoordinator(DataUpdateCoordinator[OllamaData]):
             for name, model in loaded_by_name.items():
                 if name not in self._expires:
                     events.append(ModelEvent(EVENT_MODEL_LOADED, name))
-                    self._mark_used(name, now)
-                elif self._expires[name] != model.expires_at:
+                    if not self._recovering:
+                        self._mark_used(name, now)
+                elif self._expires[name] != model.expires_at and not self._recovering:
                     self._mark_used(name, now)
 
         self._baseline = True
+        self._recovering = False
         self._expires = {
             name: model.expires_at for name, model in loaded_by_name.items()
         }

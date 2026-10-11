@@ -41,13 +41,11 @@ class OllamaModelEventEntity(OllamaEntity, EventEntity):
         """Fire the events detected by the latest poll."""
         data = self.coordinator.data
         # Failed polls notify listeners with the previous snapshot; only fire once.
-        if data is self._handled:
-            self.async_write_ha_state()
-            return
+        events = data.events if data is not self._handled else ()
         self._handled = data
-        if not data.events:
-            self.async_write_ha_state()
-            return
-        for event in data.events:
+        # Write the availability change on its own first, so that triggers using
+        # `not_from: unavailable` still see an event fired right after an outage.
+        self.async_write_ha_state()
+        for event in events:
             self._trigger_event(event.event_type, {ATTR_MODEL: event.model})
             self.async_write_ha_state()
