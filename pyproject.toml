@@ -1,0 +1,54 @@
+[project]
+name = "ha-ollama-monitor"
+version = "0.1.0"
+description = "Home Assistant custom integration that monitors an Ollama server"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.14"
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+timeout = 30
+addopts = "--cov=custom_components.ollama_monitor --cov-report=term-missing --cov-fail-under=100"
+
+[tool.coverage.run]
+branch = true
+source = ["custom_components/ollama_monitor"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_also = ["if TYPE_CHECKING:"]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "A", "ASYNC", "B", "C4", "D", "E", "F", "FLY", "G", "I", "ICN", "LOG", "N",
+    "PERF", "PGH", "PIE", "PL", "PT", "PTH", "RET", "RSE", "RUF", "S", "SIM",
+    "SLF", "T20", "TC", "TID", "TRY", "UP", "W",
+]
+ignore = [
+    "D202", "D203", "D213", "PLR0913", "PLR2004", "TRY003", "TC001", "TC002",
+    "TC003", "TRY300", "BLE001",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D", "S101", "SLF001", "PLR0915", "PLR0917"]
+
+[tool.ruff.lint.isort]
+force-sort-within-sections = true
+known-first-party = ["homeassistant"]
+combine-as-imports = true
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_unreachable = true
+explicit_package_bases = true
+mypy_path = "."
+packages = ["custom_components.ollama_monitor"]

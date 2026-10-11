@@ -1,0 +1,38 @@
+unload_model:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: ollama_monitor
+    model:
+      required: true
+      example: "qwen3:8b"
+      selector:
+        text:
+
+pull_model:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: ollama_monitor
+    model:
+      required: true
+      example: "qwen3:8b"
+      selector:
+        text:
+
+delete_model:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: ollama_monitor
+    model:
+      required: true
+      example: "qwen3:8b"
+      selector:
+        text:

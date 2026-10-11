@@ -1,0 +1,230 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to an Ollama server",
+        "description": "Monitor which models an Ollama server has loaded, how much VRAM they use and when they were last used.",
+        "data": {
+          "url": "Server URL"
+        },
+        "data_description": {
+          "url": "For example http://192.168.1.10:11434. A bare host name or IP address uses http and port 11434."
+        }
+      },
+      "reconfigure": {
+        "title": "Change the Ollama server URL",
+        "data": {
+          "url": "Server URL"
+        },
+        "data_description": {
+          "url": "For example http://192.168.1.10:11434. A bare host name or IP address uses http and port 11434."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the server. Check the URL and that Ollama listens on a network address (OLLAMA_HOST=0.0.0.0).",
+      "invalid_url": "Enter an http or https URL or a host name.",
+      "not_ollama": "The server answered, but not like an Ollama server.",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This Ollama server is already configured.",
+      "reconfigure_successful": "The server URL was updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Ollama Monitor options",
+        "data": {
+          "scan_interval": "Polling interval",
+          "activity_window": "Activity window",
+          "check_updates": "Check GitHub for new Ollama releases",
+          "allow_management": "Allow model management"
+        },
+        "data_description": {
+          "scan_interval": "How often the server is polled. Activity is detected with this precision.",
+          "activity_window": "How long a model counts as active after a detected request. Must not be shorter than the polling interval.",
+          "check_updates": "Adds an update entity that compares the server version with the latest release on GitHub (checked every 6 hours).",
+          "allow_management": "Allows the pull model and delete model actions. Leave off unless you want automations to download or delete models."
+        }
+      }
+    },
+    "error": {
+      "activity_window_too_short": "The activity window must be at least as long as the polling interval."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "reachable": {
+        "name": "Reachable"
+      },
+      "active": {
+        "name": "Active"
+      },
+      "cpu_offload": {
+        "name": "CPU offload"
+      },
+      "loaded": {
+        "name": "Loaded"
+      },
+      "model_active": {
+        "name": "Active"
+      }
+    },
+    "button": {
+      "unload": {
+        "name": "Unload"
+      }
+    },
+    "event": {
+      "model_event": {
+        "name": "Model event",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "model_loaded": "Model loaded",
+              "model_unloaded": "Model unloaded",
+              "model_installed": "Model installed",
+              "model_removed": "Model removed"
+            }
+          },
+          "model": {
+            "name": "Model"
+          }
+        }
+      }
+    },
+    "sensor": {
+      "loaded_models": {
+        "name": "Loaded models",
+        "state_attributes": {
+          "models": {
+            "name": "Models"
+          }
+        }
+      },
+      "installed_models": {
+        "name": "Installed models"
+      },
+      "vram_used": {
+        "name": "VRAM used"
+      },
+      "memory_used": {
+        "name": "Model memory"
+      },
+      "gpu_share": {
+        "name": "GPU share"
+      },
+      "disk_usage": {
+        "name": "Disk usage"
+      },
+      "last_activity": {
+        "name": "Last activity"
+      },
+      "version": {
+        "name": "Version"
+      },
+      "model_memory": {
+        "name": "Memory"
+      },
+      "model_vram": {
+        "name": "VRAM"
+      },
+      "model_gpu_share": {
+        "name": "GPU share"
+      },
+      "context_length": {
+        "name": "Context length"
+      },
+      "unloads_at": {
+        "name": "Unloads at"
+      },
+      "last_used": {
+        "name": "Last used"
+      },
+      "size_on_disk": {
+        "name": "Size on disk"
+      }
+    }
+  },
+  "exceptions": {
+    "cannot_connect": {
+      "message": "Cannot reach the Ollama server at {url}: {error}"
+    },
+    "invalid_response": {
+      "message": "Unexpected response from the Ollama server at {url}: {error}"
+    },
+    "release_check_failed": {
+      "message": "Checking GitHub for the latest Ollama release failed: {error}"
+    },
+    "entry_not_found": {
+      "message": "No Ollama Monitor entry with ID {entry_id} exists."
+    },
+    "entry_not_loaded": {
+      "message": "The Ollama Monitor entry {title} is not loaded."
+    },
+    "management_disabled": {
+      "message": "Model management is disabled for {title}. Enable \"Allow model management\" in the integration options."
+    },
+    "model_not_found": {
+      "message": "The model {model} was not found on the server."
+    },
+    "action_cannot_connect": {
+      "message": "Cannot reach the Ollama server to act on {model}: {error}"
+    },
+    "action_failed": {
+      "message": "The Ollama server refused the request for {model}: {error}"
+    }
+  },
+  "issues": {
+    "server_unreachable": {
+      "title": "Ollama server {title} is unreachable",
+      "description": "Home Assistant has not been able to reach the Ollama server at {url} for more than 5 minutes. Check that the server (or its container) is running and reachable from Home Assistant. If the URL changed, use **Reconfigure** on the integration entry. This issue disappears once the server answers again."
+    }
+  },
+  "services": {
+    "unload_model": {
+      "name": "Unload model",
+      "description": "Frees the memory a model occupies on the Ollama server.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Server",
+          "description": "The Ollama server."
+        },
+        "model": {
+          "name": "Model",
+          "description": "The model name as shown by `ollama list`."
+        }
+      }
+    },
+    "pull_model": {
+      "name": "Pull model",
+      "description": "Downloads or updates a model. The download continues in the background. Requires \"Allow model management\".",
+      "fields": {
+        "config_entry_id": {
+          "name": "Server",
+          "description": "The Ollama server."
+        },
+        "model": {
+          "name": "Model",
+          "description": "The model to download, for example qwen3:8b."
+        }
+      }
+    },
+    "delete_model": {
+      "name": "Delete model",
+      "description": "Deletes an installed model from the server. Requires \"Allow model management\".",
+      "fields": {
+        "config_entry_id": {
+          "name": "Server",
+          "description": "The Ollama server."
+        },
+        "model": {
+          "name": "Model",
+          "description": "The model name as shown by `ollama list`."
+        }
+      }
+    }
+  }
+}

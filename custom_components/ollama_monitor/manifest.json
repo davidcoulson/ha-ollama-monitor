@@ -1,0 +1,15 @@
+{
+  "domain": "ollama_monitor",
+  "name": "Ollama Monitor",
+  "codeowners": ["@davidcoulson"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/davidcoulson/ha-ollama-monitor",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/davidcoulson/ha-ollama-monitor/issues",
+  "loggers": ["custom_components.ollama_monitor"],
+  "quality_scale": "platinum",
+  "requirements": [],
+  "version": "0.1.0"
+}
