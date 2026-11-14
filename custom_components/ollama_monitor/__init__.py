@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_URL, Platform
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv, device_registry as dr
@@ -108,6 +109,9 @@ async def async_remove_config_entry_device(
 ) -> bool:
     """Allow deleting model devices that are no longer on the server."""
     if server_identifier(entry) in device.identifiers:
+        return False
+    # No model inventory while the entry is not loaded, so nothing can be removed.
+    if entry.state is not ConfigEntryState.LOADED:
         return False
     data = entry.runtime_data.coordinator.data
     return not any(

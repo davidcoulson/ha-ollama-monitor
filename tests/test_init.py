@@ -912,3 +912,17 @@ async def test_upgrade_converts_model_devices_in_place(
     await _poll(hass, frozen_time)
     assert device_registry.async_get(child.id) is None
     assert entity_registry.async_get("sensor.qwen3_8b_vram") is None
+
+
+async def test_remove_config_entry_device_not_loaded(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    device_registry: dr.DeviceRegistry,
+) -> None:
+    """Without runtime data the removal is refused instead of raising."""
+    model = device_registry.async_get_child_device_by_identifier(
+        (DOMAIN, "01TESTENTRY_model_qwen3:8b"), "01TESTENTRY"
+    )
+    assert model is not None
+    await hass.config_entries.async_unload(init_integration.entry_id)
+    assert not await async_remove_config_entry_device(hass, init_integration, model)
