@@ -232,11 +232,11 @@ class OllamaCoordinator(DataUpdateCoordinator[OllamaData]):
                 translation_placeholders={"url": self.client.url, "error": str(err)},
             ) from err
 
-        if self._unreachable_since is not None:
-            self._unreachable_since = None
-            ir.async_delete_issue(
-                self.hass, DOMAIN, f"{ISSUE_UNREACHABLE}_{self.config_entry.entry_id}"
-            )
+        self._unreachable_since = None
+        # Unconditional: after a reload this coordinator did not raise the issue.
+        ir.async_delete_issue(
+            self.hass, DOMAIN, f"{ISSUE_UNREACHABLE}_{self.config_entry.entry_id}"
+        )
         return self._process(version, loaded, installed)
 
     def _track_unreachable(self) -> None:

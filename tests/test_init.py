@@ -926,3 +926,32 @@ async def test_remove_config_entry_device_not_loaded(
     assert model is not None
     await hass.config_entries.async_unload(init_integration.entry_id)
     assert not await async_remove_config_entry_device(hass, init_integration, model)
+
+
+async def test_repair_cleared_after_reload_and_removal(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    fake_ollama: FakeOllama,
+    frozen_time: FrozenDateTimeFactory,
+    issue_registry: ir.IssueRegistry,
+) -> None:
+    """The unreachable repair does not outlive the coordinator that raised it."""
+    fake_ollama.fail = True
+    await _poll(hass, frozen_time)
+    await _poll(hass, frozen_time, 300)
+    assert issue_registry.async_get_issue(DOMAIN, ISSUE_ID) is not None
+
+    fake_ollama.fail = False
+    await hass.config_entries.async_reload(init_integration.entry_id)
+    assert issue_registry.async_get_issue(DOMAIN, ISSUE_ID) is None
+
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        ISSUE_ID,
+        is_fixable=False,
+        severity=ir.IssueSeverity.ERROR,
+        translation_key=ISSUE_UNREACHABLE,
+    )
+    await hass.config_entries.async_remove(init_integration.entry_id)
+    assert issue_registry.async_get_issue(DOMAIN, ISSUE_ID) is None
