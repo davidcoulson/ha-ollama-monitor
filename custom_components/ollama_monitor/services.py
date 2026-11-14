@@ -135,6 +135,12 @@ async def _async_handle_pull(call: ServiceCall) -> None:
         first = await anext(progress)
     except OllamaError as err:
         _raise_action_error(err, model)
+    try:
+        # The entry may have been unloaded while the first message was pending.
+        _get_entry(call)
+    except ServiceValidationError:
+        await progress.aclose()  # type: ignore[attr-defined]
+        raise
     LOGGER.info("Pulling %s on %s", model, entry.title)
     entry.async_create_background_task(
         call.hass,
