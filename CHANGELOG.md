@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2
+
+- The unreachable repair is cleared after a reload and when the entry is removed.
+- A model pull no longer continues when the entry unloads before the first message.
+- Model devices cannot be removed while the entry is not loaded.
+
 ## 0.3.1
 
 - New icon and logo: Ollama's llama with a gauge badge, in light and dark variants

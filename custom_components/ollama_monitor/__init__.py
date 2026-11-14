@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_URL, Platform
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv, device_registry as dr
+from homeassistant.helpers import (
+    config_validation as cv,
+    device_registry as dr,
+    issue_registry as ir,
+)
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
 from .api import OllamaClient
-from .const import CONF_CHECK_UPDATES, DEFAULT_CHECK_UPDATES, DOMAIN
+from .const import CONF_CHECK_UPDATES, DEFAULT_CHECK_UPDATES, DOMAIN, ISSUE_UNREACHABLE
 from .coordinator import (
     OllamaConfigEntry,
     OllamaCoordinator,
@@ -101,6 +106,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: OllamaConfigEntry) -> b
 async def async_remove_entry(hass: HomeAssistant, entry: OllamaConfigEntry) -> None:
     """Remove the stored activity history of a deleted entry."""
     await OllamaCoordinator.async_remove_store_for(hass, entry.entry_id)
+    ir.async_delete_issue(hass, DOMAIN, f"{ISSUE_UNREACHABLE}_{entry.entry_id}")
 
 
 async def async_remove_config_entry_device(
@@ -108,6 +114,9 @@ async def async_remove_config_entry_device(
 ) -> bool:
     """Allow deleting model devices that are no longer on the server."""
     if server_identifier(entry) in device.identifiers:
+        return False
+    # No model inventory while the entry is not loaded, so nothing can be removed.
+    if entry.state is not ConfigEntryState.LOADED:
         return False
     data = entry.runtime_data.coordinator.data
     return not any(

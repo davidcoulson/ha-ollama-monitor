@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from typing import Any
 
 import pytest
@@ -191,3 +192,26 @@ async def test_pull_fails_later(
     ]
     await _call(hass, SERVICE_PULL_MODEL)
     assert "Pulling qwen3:8b on Ollama (10.2.6.50) failed: disk full" in caplog.text
+
+
+@pytest.mark.usefixtures("management")
+async def test_pull_entry_unloaded_before_first_message(
+    hass: HomeAssistant, init_integration: MockConfigEntry
+) -> None:
+    """A pull whose first message arrives after unload is not continued."""
+    closed = False
+
+    async def progress(model: str) -> AsyncIterator[dict[str, Any]]:
+        nonlocal closed
+        try:
+            await hass.config_entries.async_unload(init_integration.entry_id)
+            yield {"status": "pulling manifest"}
+            yield {"status": "success"}
+        finally:
+            closed = True
+
+    init_integration.runtime_data.client.async_pull_model = progress  # type: ignore[method-assign]
+    with pytest.raises(ServiceValidationError) as err:
+        await _call(hass, SERVICE_PULL_MODEL)
+    assert err.value.translation_key == "entry_not_loaded"
+    assert closed
