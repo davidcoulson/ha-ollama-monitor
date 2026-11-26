@@ -99,6 +99,9 @@
     },
     "delete_model": {
       "service": "mdi:delete"
+    },
+    "reload_code": {
+      "service": "mdi:reload"
     }
   }
 }
