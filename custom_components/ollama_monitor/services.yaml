@@ -36,3 +36,5 @@ delete_model:
       example: "qwen3:8b"
       selector:
         text:
+
+reload_code:

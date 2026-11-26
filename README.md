@@ -85,6 +85,7 @@ by hand from the device page.
 | `ollama_monitor.unload_model` | no | Unload a model by name |
 | `ollama_monitor.pull_model` | yes | Download (or update) a model; runs in the background and reports failures in the log |
 | `ollama_monitor.delete_model` | yes | Delete an installed model |
+| `ollama_monitor.reload_code` | no | Development only: load changed Python files without restarting Home Assistant (admin only) |
 
 Guarded actions are refused unless **Allow model management** is enabled in the
 integration's options (off by default).

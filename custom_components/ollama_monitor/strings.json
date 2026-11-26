@@ -253,6 +253,10 @@
           "description": "The model name as shown by `ollama list`."
         }
       }
+    },
+    "reload_code": {
+      "name": "Reload code",
+      "description": "For development. Unloads Ollama Monitor, imports its Python files from disk again and sets it up, so a code change takes effect without restarting Home Assistant. Config flow and manifest changes still need a restart."
     }
   }
 }
