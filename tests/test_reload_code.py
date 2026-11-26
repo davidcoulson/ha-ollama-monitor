@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import sys
 from unittest.mock import patch
 
@@ -10,7 +11,6 @@ import pytest
 from custom_components.ollama_monitor.const import DOMAIN
 from homeassistant.config_entries import ConfigEntries, ConfigEntryState
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.loader import Integration
 
 
 async def test_reload_code_replaces_the_modules(hass, init_integration) -> None:
@@ -32,19 +32,19 @@ async def test_reload_code_replaces_the_modules(hass, init_integration) -> None:
     ("target", "result"),
     [
         (ConfigEntries, "async_unload"),
-        (Integration, "async_get_component"),
+        (importlib, "import_module"),
         (ConfigEntries, "async_setup"),
     ],
 )
 async def test_reload_code_reports_failures(hass, init_integration, target, result) -> None:
     kwargs = {"return_value": False}
-    if target is Integration:  # unload needs the old module; only the fresh import fails
-        real = Integration.async_get_component
+    if target is importlib:  # unload needs the old module; only the fresh import fails
+        real = importlib.import_module
 
-        async def kwargs_wrapper(self):
-            if "custom_components.ollama_monitor" not in sys.modules:
+        def kwargs_wrapper(name, *a, **k):
+            if name == "custom_components.ollama_monitor" and name not in sys.modules:
                 raise ImportError("boom")
-            return await real(self)
+            return real(name, *a, **k)
 
         kwargs = {"new": kwargs_wrapper}
     with patch.object(target, result, **kwargs), pytest.raises(HomeAssistantError):
