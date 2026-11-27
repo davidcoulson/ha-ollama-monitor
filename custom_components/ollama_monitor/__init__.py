@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import json
+from pathlib import Path
 import sys
 
 from homeassistant.config_entries import ConfigEntryState
@@ -101,18 +103,23 @@ def _register_reload_code(hass: HomeAssistant) -> None:
         if failed:
             raise HomeAssistantError(f"{DOMAIN} did not set up again for {failed}; see the log")
 
-        _clear_marketplace_restart(hass)
-
     async_register_admin_service(hass, DOMAIN, "reload_code", _reload_code)
+
+
+_CODE_VERSION = json.loads((Path(__file__).parent / "manifest.json").read_text())["version"]
 
 
 def _clear_marketplace_restart(hass: HomeAssistant) -> None:
     """Drop Marketplace's "restart to finish the update" repairs for Ollama Monitor.
 
-    Marketplace cannot see reload_code, so they would stay until a restart.
+    Marketplace cannot see reload_code, so they would stay until a restart. Called from
+    entry setup, so it uses the new code's version even when the old handler did the reload;
+    a repair for any other version still waits.
     """
     for (domain, issue_id), issue in list(ir.async_get(hass).issues.items()):
-        if domain == "marketplace" and issue_id.startswith("restart_required_") and issue.issue_domain == DOMAIN:
+        if (domain == "marketplace" and issue_id.startswith("restart_required_")
+                and issue.issue_domain == DOMAIN
+                and issue_id.rsplit("/", 1)[-1].removeprefix("v") == _CODE_VERSION):
             ir.async_delete_issue(hass, domain, issue_id)
 
 
@@ -150,6 +157,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: OllamaConfigEntry) -> bo
     )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    _clear_marketplace_restart(hass)
     return True
 
 
